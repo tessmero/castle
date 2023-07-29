@@ -1,0 +1,194 @@
+
+/** 
+ * 
+ * 
+ * 
+ */
+class BlockGrid {
+    
+    constructor(){
+        var n = global.gridWidth * global.gridHeight; // x y
+        
+        this.heights = new Array(n).fill(0) // z  
+        this.heights[this.getI(6,6)] = .5
+        
+        // set ground height with perlin noise
+        var i = 0
+        for( var x=0 ; x < global.gridWidth ; x++ ){
+            for( var y=0 ; y < global.gridHeight ; y++ ){
+                this.heights[i] = .1+.5*perlin.get(x/10,y/10)
+                i++
+            }
+        }
+        
+        this.pathIndices = new Array(n)
+        this.computePathIndices()
+        
+        // edges extending down to off-screen
+        this.sideFaceEdge = global.blockUnits.z.mul(-10)
+    }
+    
+    //get internal array index for block
+    getI(x,y){
+        return y*global.gridWidth + x;
+    }
+    
+    // populate pathIndices member with integers
+    computePathIndices(){
+        this.pathIndices.fill(-1)
+        
+        var x = global.hubPos[0]
+        var y = global.hubPos[1]
+        var pathIndex = 0
+        var i = this.getI(x,y)
+        this.pathIndices[i] = pathIndex
+        var h = this.heights[i]
+        var propCoords = [[x,y,h]]
+    
+        while( propCoords.length > 0 ){
+            pathIndex += 1
+            var newCoords = []
+            propCoords.forEach( xyh => {
+                global.allDirections.forEach(d => {
+                    var x1 = xyh[0]+d[0]
+                    var y1 = xyh[1]+d[1]
+                    if( (x1<0) || (x1>=global.gridWidth) || (y1<0) || (y1>=global.gridHeight) ){
+                        return
+                    }
+                    var i1 = this.getI(x1,y1)
+                    var h1 = this.heights[i1]
+                    if( (this.pathIndices[i1] != -1) || (Math.abs(h1-xyh[2])>1) ){
+                        return
+                    }
+                    this.pathIndices[i1] = pathIndex
+                    newCoords.push([x1,y1,h1])
+                })
+            })
+            propCoords = newCoords
+        }
+    }
+    
+    // get path from given tile to pathIndex 0 tile
+    getPath(x,y){
+        var result = []
+        var i
+        while( true ){
+            i = this.getI(x,y)
+            var z = this.heights[i]
+            result.push( [x,y,z] )
+            
+            if(this.pathIndices[i] == 0){
+                break
+            }
+            
+            // check neightboring path indices
+            var minNpi = 1e4
+            var bestX,bestY
+            global.allDirections.forEach(d => {
+                var nx = x+d[0]
+                var ny = y+d[1]
+                if( (nx<0) || (nx>=global.gridWidth) || (ny<0) || (ny>=global.gridHeight) ){
+                    return
+                }
+                var npi = this.pathIndices[this.getI(nx,ny)]
+                if( npi == -1 ){
+                    return
+                }
+                if( (npi < minNpi) || ((npi == minNpi) && Math.random()<.5) ){
+                    minNpi = npi
+                    bestX = nx
+                    bestY = ny
+                }
+            })
+            x = bestX
+            y = bestY
+            
+            
+        }
+            
+        // return two-way path
+        var rev = [...result].reverse()
+        return new Path(rev.concat(result))
+    }
+    
+    // project world coords to isometric 2d view
+    // based on (0,0,0) 1x1x1 block edges 
+    // defined in global.js
+    get2DCoords(x,y,z){
+        return global.blockOrigin
+            .add(global.blockUnits.x.mul(x))
+            .add(global.blockUnits.y.mul(y))
+            .add(global.blockUnits.z.mul(z))
+    }
+    
+    request    
+    
+    draw(g){
+        for( var x=global.gridWidth-1 ; x>=0 ; x-- ){
+            for( var y=global.gridHeight-1 ; y>=0 ; y-- ){
+                var z = this.heights[this.getI(x,y)]
+                this.drawBlock(g,x,y,z)
+            }
+        }
+    }
+    
+    drawBlock(g,x,y,z){
+        var a = this.get2DCoords(x,y,z)
+        var b = a.add(global.blockUnits.x)
+        var c = b.add(global.blockUnits.y)
+        var d = a.add(global.blockUnits.y)
+        
+        var topColor = '#7ec850'
+        var sideColor = '#9b7653'
+        if( z%1==0 ){
+            topColor = '#DDD'
+            sideColor = '#CCC'
+        }
+        
+        // draw top of block
+        this.drawQuad(g,a,b,c,d,topColor,'black')
+        
+        // draw visible left face of block
+        this.drawQuad(g,a,d,d.add(this.sideFaceEdge),a.add(this.sideFaceEdge),sideColor,'black')
+        
+        // draw visible right face of block
+        this.drawQuad(g,a,b,b.add(this.sideFaceEdge),a.add(this.sideFaceEdge),sideColor,'black')
+        
+        if( global.debugBlockCoords ){
+            g.fillStyle = 'black'
+            g.font = ".001em Arial";
+            g.textAlign = "center";
+            g.fillText(`${x},${y},${z.toFixed(1)}`, a.x, a.y-.01);
+        }
+        
+        if( global.debugPathIndices ){
+            var pathIndex = this.pathIndices[this.getI(x,y)]
+            g.fillStyle = 'black'
+            g.font = ".001em Arial";
+            g.textAlign = "center";
+            g.fillText(pathIndex, a.x, a.y-.01);
+        }
+    }
+    
+    drawQuad(g,a,b,c,d,fillStyle,strokeStyle=null){
+        g.fillStyle = fillStyle
+        this.quadPath(g,a,b,c,d)
+        g.fill()
+        
+        if( strokeStyle != null ){
+            g.strokeStyle = strokeStyle
+            g.lineWidth = .001
+            this.quadPath(g,a,b,c,d)
+            g.stroke()
+        }
+    }
+    
+    quadPath(g,a,b,c,d){
+        g.beginPath()
+        g.moveTo( a.x, a.y )
+        g.lineTo( b.x, b.y )
+        g.lineTo( c.x, c.y )
+        g.lineTo( d.x, d.y )
+        g.lineTo( a.x, a.y )
+    }
+}
