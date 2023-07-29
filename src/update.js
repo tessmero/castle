@@ -1,7 +1,69 @@
 
+
+
+function update(dt) {    
+    fitToContainer()
+    global.t += dt
+    
+    // assign new build tasks if necessary
+    if( global.newTaskCountdown <= 0 ){
+        while( (global.allBuildTasks.length<global.taskCountLimit) ){
+            
+            // request build target
+            var xy = getNextBlockToBuild()
+            
+            // if no build target
+            if(xy == null){
+                if(global.allBuildTasks.length == 0){
+                    if(global.noBuildTasksLastUpdate){
+                        
+                        // advance build height
+                        global.currentBuildHeight++
+                        if( global.currentBuildHeight > 1000 ){
+                            global.currentBuildHeight = 1000
+                        }
+                        global.noBuildTasksLastUpdate = false
+                    } else {
+                        
+                        // maybe advance build height next update
+                        global.noBuildTasksLastUpdate = true
+                    }
+                }
+                break
+            } else {
+                
+                // foudn build target, start building
+                var path = global.grid.getPath(...xy)
+                var bt = new BuildTask(...xy, path)
+                global.allBuildTasks.push( bt )
+                bt.path.blockCoords.forEach( xy => {
+                    var i = global.grid.getI(...xy)
+                    global.grid.blockedByConstruction[i] = true
+                })
+            }
+        }
+        global.newTaskCountdown=global.newTaskDelay
+    }
+    global.newTaskCountdown -= dt
+    
+    // advance tasks and remove finished tasks
+    var oldN = global.allBuildTasks.length
+    global.allBuildTasks = global.allBuildTasks
+                            .filter( bt=> bt.update(dt) )
+                            
+    // unblock grid if any tasks were removed
+    if( global.allBuildTasks.length != oldN ){
+        global.grid.computeBlockedByConstruction()
+    }
+    
+    global.grid.processBlockPlacements()
+}
+
+
+
+
 var lastCanvasOffsetWidth = -1;
 var lastCanvasOffsetHeight = -1;
-
 function fitToContainer(){
     
     var cvs = global.canvas
@@ -18,46 +80,4 @@ function fitToContainer(){
     global.ctx.setTransform(global.canvasScale, 0, 0, 
         global.canvasScale, global.canvasOffsetX, global.canvasOffsetY);
     }
-}
-
-
-function update(dt) {    
-    fitToContainer()
-    global.t += dt
-    
-    // assign new build tasks if necessary
-    if( global.newTaskCountdown <= 0 ){
-        if( (global.allBuildTasks.length<global.taskCountLimit) ){
-            var xy = getNextBlockToBuild()
-            if(xy == null){
-                if(global.allBuildTasks.length == 0){
-                    global.currentBuildHeight++
-                    if( global.currentBuildHeight > 1000 ){
-                        global.currentBuildHeight = 1000
-                    }
-                }
-            } else {
-                var bt = new BuildTask(...xy)
-                global.allBuildTasks.push( bt )
-                bt.path.blockCoords.forEach( xy => {
-                    var i = global.grid.getI(...xy)
-                    global.grid.blockedByConstruction[i] = true
-                })
-            }
-        }
-        global.newTaskCountdown =global.newTaskDelay
-    }
-    global.newTaskCountdown -= dt
-    
-    // advance tasks and remove finished tasks
-    var oldN = global.allBuildTasks.length
-    global.allBuildTasks = global.allBuildTasks
-                            .filter( bt=> bt.update(dt) )
-                            
-    // unblock grid if any tasks were removed
-    if( global.allBuildTasks.length != oldN ){
-        global.grid.computeBlockedByConstruction()
-    }
-    
-    global.grid.processBlockPlacements()
 }

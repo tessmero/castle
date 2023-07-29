@@ -11,14 +11,15 @@ class BlockGrid {
         
         this.blockedByConstruction = new Array(n).fill(false)
         this.heights = new Array(n).fill(0) // z  
-        this.heights[this.getI(6,6)] = .5
         
         // set ground height with perlin noise
-        var i = 0
-        for( var x=0 ; x < global.gridWidth ; x++ ){
-            for( var y=0 ; y < global.gridHeight ; y++ ){
-                this.heights[i] = .5+.4*perlin.get(x/10,y/10)
-                i++
+        if( true ){
+            var i = 0
+            for( var x=0 ; x < global.gridWidth ; x++ ){
+                for( var y=0 ; y < global.gridHeight ; y++ ){
+                    this.heights[i] = .5+perlin.get(x/10,y/10)
+                    i++
+                }
             }
         }
         
@@ -26,7 +27,7 @@ class BlockGrid {
         this.computePathIndices()
         
         // edges extending down to off-screen
-        this.sideFaceEdge = global.blockUnits.z.mul(-10)
+        this.sideFaceEdge = global.blockUnits.z.mul(-50)
         
         // queue of blocks to be built at the start of the next update
         this.requestedBlockPlacements = []
@@ -53,8 +54,8 @@ class BlockGrid {
     computePathIndices(){
         this.pathIndices.fill(-1)
         
-        var x = global.hubPos[0]
-        var y = global.hubPos[1]
+        var x = global.spawnPos[0]
+        var y = global.spawnPos[1]
         var pathIndex = 0
         var i = this.getI(x,y)
         this.pathIndices[i] = pathIndex
@@ -76,7 +77,14 @@ class BlockGrid {
                     if( (this.pathIndices[i1] != -1) || (Math.abs(h1-xyh[2])>1) ){
                         return
                     }
-                    this.pathIndices[i1] = pathIndex + 1e-4*Math.abs(h1-xyh[2])
+                    this.pathIndices[i1] = pathIndex 
+                    
+                    //penalize jumps
+                    var adh = Math.abs(h1-xyh[2])
+                    if( adh > .5 ){
+                        this.pathIndices[i] += 1e-4*adh
+                    }
+                    
                     newCoords.push([x1,y1,h1])
                 })
             })
@@ -91,10 +99,11 @@ class BlockGrid {
         while( true ){
             i = this.getI(x,y)
             var pi = this.pathIndices[i]
-            var z = this.heights[i]
-            result.push( [x,y,z] )
+            var z =  this.getHeightForPathfinding(i)
+            result.push( [x,y,this.heights[i]] )
             
-            if(this.pathIndices[i] == 0){
+            // check if path is complete
+            if((x==global.spawnPos[0]) && (y==global.spawnPos[1])){
                 break
             }
             
@@ -107,11 +116,14 @@ class BlockGrid {
                 if( (nx<0) || (nx>=global.gridWidth) || (ny<0) || (ny>=global.gridHeight) ){
                     return
                 }
-                var npi = this.pathIndices[this.getI(nx,ny)]
+                var ni = this.getI(nx,ny)
+                var nz = this.getHeightForPathfinding(ni)
+                
+                var npi = this.pathIndices[ni]
                 if( npi == -1 ){
                     return
                 }
-                if( Math.abs(npi-pi) > 1.1 ){
+                if( Math.abs(nz-z) > 1 ){
                     return
                 }
                 if( (npi < minNpi) || ((npi == minNpi) && Math.random()<.5) ){
@@ -130,6 +142,15 @@ class BlockGrid {
         // return two-way path
         var rev = [...result].reverse()
         return new Path(rev.concat(result))
+    }
+    
+    // get tile height for purposes of pathfinding
+    getHeightForPathfinding(i){
+        var h = this.heights[i]
+        if( h%1==0 ){
+            return h
+        }
+        return 0
     }
     
     // project world coords to isometric 2d view
@@ -178,6 +199,9 @@ class BlockGrid {
                 this.drawBlock(g,x,y,z)
             }
         }
+        
+        //draw spawn
+        
     }
     
     drawBlock(g,x,y,z){
@@ -187,20 +211,24 @@ class BlockGrid {
         var d = a.add(global.blockUnits.y)
         
         var topColor = '#7ec850'
-        var sideColor = '#9b7653'
+        var leftColor = '#9b7653'
+        var rightColor = '#9b7653'
         if( z%1==0 ){
             topColor = '#DDD'
-            sideColor = '#CCC'
+            leftColor = '#AAA'
+            rightColor = '#CCC'
         }
         
+        var edgeColor = null//'black'
+        
         // draw top of block
-        this.drawQuad(g,a,b,c,d,topColor,'black')
+        this.drawQuad(g,a,b,c,d,topColor,edgeColor)
         
         // draw visible left face of block
-        this.drawQuad(g,a,d,d.add(this.sideFaceEdge),a.add(this.sideFaceEdge),sideColor,'black')
+        this.drawQuad(g,a,d,d.add(this.sideFaceEdge),a.add(this.sideFaceEdge),leftColor,edgeColor)
         
         // draw visible right face of block
-        this.drawQuad(g,a,b,b.add(this.sideFaceEdge),a.add(this.sideFaceEdge),sideColor,'black')
+        this.drawQuad(g,a,b,b.add(this.sideFaceEdge),a.add(this.sideFaceEdge),rightColor,edgeColor)
         
         if( global.debugBlockCoords ){
             g.fillStyle = 'black'
@@ -214,7 +242,7 @@ class BlockGrid {
             g.fillStyle = 'black'
             g.font = ".001em Arial";
             g.textAlign = "center";
-            g.fillText(pathIndex.toFixed(2), a.x, a.y-.01);
+            g.fillText(pathIndex.toFixed(0), a.x, a.y-.005);
         }
     }
     

@@ -4,14 +4,14 @@
 //    - track building progress
 //    - 
 class BuildTask{
-    constructor(x,y){
+    constructor(x,y,path){
         this.x = x
         this.y = y
-        this.path = global.grid.getPath(x,y)
+        this.path = path
         this.deliveryTimeOffset = this.path.duration/2
         this.workerOffsets = [] // position of workers on path
         this.orCount = 0 // number of workers in first half of path
-        this.workerDeployCountDown = 0
+        this.workerDeployCountDown = this.randCountdown()
         this.remainingDeliveries = global.deliveriesPerBlock
     }
     
@@ -26,6 +26,10 @@ class BuildTask{
         }
     }
     
+    randCountdown(){
+        return randRange(...global.workerDeployDelay) * (global.allBuildTasks.length/global.taskCountLimit)
+    }
+    
     update(dt){
         
         // deploy worker periodically
@@ -34,7 +38,7 @@ class BuildTask{
                 this.workerOffsets.push(0)
                 this.orCount++
             }
-            this.workerDeployCountDown = global.workerDeployDelay
+            this.workerDeployCountDown = this.randCountdown()
         }
         this.workerDeployCountDown -= dt
         
@@ -65,7 +69,7 @@ class BuildTask{
     }
     
     draw(g){
-        this.path.draw(g)
+        if( global.showPaths ) this.path.draw(g)
         this.workerOffsets.forEach(wo=>this.path.drawWorker(g,wo))
         
         if( global.debugBuildTaskProgress ){

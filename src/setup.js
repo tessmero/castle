@@ -10,6 +10,8 @@ function init() {
     global.canvas = cvs
     global.ctx = cvs.getContext("2d");
     
+    global.castle = new TempleCastle();
+    global.spawnPos = global.castle.getSpawnPos();
     global.grid = new BlockGrid();
     
     resetRand()

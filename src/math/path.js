@@ -34,10 +34,23 @@ class Path{
         // translated 2d coords
         var p = global.grid.get2DCoords(...c).add(global.blockUnits.c)
         
-        var w = .01
-        var h = .02
-        g.fillStyle = 'black'
+        // jump between tiles
+        p.y -= 3e-3*Math.abs(Math.sin(r*Math.PI))
+        
+        var holdingCargo = (stepIndex<this.nSteps/2)
+        
+        // draw body
+        var w = .005
+        var h = .008
+        g.fillStyle = 'white'
         g.fillRect( p.x-w/2,p.y-h/2,w,h)
+        
+        // draw cargo
+        if( holdingCargo ){
+            w = h
+            g.fillStyle = 'gray'
+            g.fillRect( p.x-w/2,p.y-h/2-h,w,h)
+        }
     }
     
     draw(g){
