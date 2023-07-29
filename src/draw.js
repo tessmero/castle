@@ -8,9 +8,11 @@ function draw(fps, t) {
     global.ctx.fillStyle = global.backgroundColor
     global.ctx.fillRect( 0, 0, canvas.width, canvas.height )
    
+   // draw map and built blocks
    global.grid.draw(ctx)
    
-   global.test.draw(ctx)
+   // draw workers and partially built blocks
+   global.allBuildTasks.forEach(bt=>bt.draw(ctx))
    
    //debug
    //trace always-visible circle

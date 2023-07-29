@@ -9,6 +9,7 @@ class BlockGrid {
     constructor(){
         var n = global.gridWidth * global.gridHeight; // x y
         
+        this.blockedByConstruction = new Array(n).fill(false)
         this.heights = new Array(n).fill(0) // z  
         this.heights[this.getI(6,6)] = .5
         
@@ -16,7 +17,7 @@ class BlockGrid {
         var i = 0
         for( var x=0 ; x < global.gridWidth ; x++ ){
             for( var y=0 ; y < global.gridHeight ; y++ ){
-                this.heights[i] = .1+.5*perlin.get(x/10,y/10)
+                this.heights[i] = .5+.4*perlin.get(x/10,y/10)
                 i++
             }
         }
@@ -26,11 +27,26 @@ class BlockGrid {
         
         // edges extending down to off-screen
         this.sideFaceEdge = global.blockUnits.z.mul(-10)
+        
+        // queue of blocks to be built at the start of the next update
+        this.requestedBlockPlacements = []
     }
     
     //get internal array index for block
     getI(x,y){
         return y*global.gridWidth + x;
+    }
+    
+    //populate blockedByConstruction member with bools
+    computeBlockedByConstruction(){
+        this.blockedByConstruction.fill(false)
+        
+        global.allBuildTasks.forEach( bt => {
+            bt.path.blockCoords.forEach(xy => {
+                var i = this.getI(...xy)
+                this.blockedByConstruction[i] = true
+            })
+        })
     }
     
     // populate pathIndices member with integers
@@ -60,7 +76,7 @@ class BlockGrid {
                     if( (this.pathIndices[i1] != -1) || (Math.abs(h1-xyh[2])>1) ){
                         return
                     }
-                    this.pathIndices[i1] = pathIndex
+                    this.pathIndices[i1] = pathIndex + 1e-4*Math.abs(h1-xyh[2])
                     newCoords.push([x1,y1,h1])
                 })
             })
@@ -74,6 +90,7 @@ class BlockGrid {
         var i
         while( true ){
             i = this.getI(x,y)
+            var pi = this.pathIndices[i]
             var z = this.heights[i]
             result.push( [x,y,z] )
             
@@ -94,7 +111,11 @@ class BlockGrid {
                 if( npi == -1 ){
                     return
                 }
+                if( Math.abs(npi-pi) > 1.1 ){
+                    return
+                }
                 if( (npi < minNpi) || ((npi == minNpi) && Math.random()<.5) ){
+                    
                     minNpi = npi
                     bestX = nx
                     bestY = ny
@@ -114,14 +135,41 @@ class BlockGrid {
     // project world coords to isometric 2d view
     // based on (0,0,0) 1x1x1 block edges 
     // defined in global.js
-    get2DCoords(x,y,z){
+    get2DCoords(x,y,z=null){
+        
+        if(z==null){
+            z = this.heights[this.getI(x,y)]
+        }
+        
         return global.blockOrigin
             .add(global.blockUnits.x.mul(x))
             .add(global.blockUnits.y.mul(y))
             .add(global.blockUnits.z.mul(z))
     }
     
-    request    
+    // request z coordinate to be increased to nearest integer
+    // called in build_task.js
+    requestBlockPlacement(x,y){
+        this.requestedBlockPlacements.push([x,y])
+    }
+    
+    // called once per update
+    processBlockPlacements(){
+        var placedAny = false
+        while( this.requestedBlockPlacements.length > 0 ){
+            var xy = this.requestedBlockPlacements.pop()
+            var i = this.getI(...xy)
+            var z = this.heights[i]
+            if( z%1==0 ){
+                z++
+            } else {
+                z = Math.ceil(z)
+            }
+            this.heights[i] = z
+            placedAny = true
+        }
+        if( placedAny ) this.computePathIndices()
+    }
     
     draw(g){
         for( var x=global.gridWidth-1 ; x>=0 ; x-- ){
@@ -166,7 +214,7 @@ class BlockGrid {
             g.fillStyle = 'black'
             g.font = ".001em Arial";
             g.textAlign = "center";
-            g.fillText(pathIndex, a.x, a.y-.01);
+            g.fillText(pathIndex.toFixed(2), a.x, a.y-.01);
         }
     }
     

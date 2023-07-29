@@ -1,5 +1,7 @@
+// long-term construction plan
+
 class Castle{
-    constuctor()
+    constuctor(){}
     
     getTargetHeight(x,y){
         throw new Exception('not implemented')

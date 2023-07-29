@@ -35,7 +35,21 @@ const global = {
     gridWidth: 10,
     gridHeight: 10,
     
-    // geme objects
+    // active contruction projects
+    allBuildTasks: [],
+    workerDeployDelay: 100, //millisecs 
+    newTaskDelay: 500,
+    newTaskCountdown: 0,
+    taskCountLimit: 10,
+    currentBuildHeight: 0, // z-value of new blocks
+    workerSpeed: 9e-3, //tiles per ms
+    deliveriesPerBlock: 5, // trips per block
+    
+    // long-term construction plan
+    castle: new SimpleCastle(),
+    
+    
+    // game objects
     hubPos: [5,5],
     
     // mouse
@@ -49,6 +63,6 @@ const global = {
     
     //debug
     debugBlockCoords: false,
-    debugPathIndices: false,
-    debugBuildTaskProgress: true,
+    debugPathIndices: true,
+    debugBuildTaskProgress: false,
 }

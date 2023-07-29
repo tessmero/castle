@@ -7,9 +7,9 @@
 class Path{
     constructor(blockCoords){
         this.blockCoords = blockCoords
-        this.duration = 5000
         
         this.nSteps = this.blockCoords.length-1
+        this.duration = this.nSteps/global.workerSpeed
         this.stepDuration = this.duration/this.nSteps
         
     }

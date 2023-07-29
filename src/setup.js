@@ -11,7 +11,6 @@ function init() {
     global.ctx = cvs.getContext("2d");
     
     global.grid = new BlockGrid();
-    global.test = new BuildTask(0,9)
     
     resetRand()
     requestAnimationFrame(gameLoop);
