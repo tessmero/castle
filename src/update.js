@@ -16,13 +16,15 @@ function update(dt) {
             if(xy == null){
                 if(global.allBuildTasks.length == 0){
                     if(global.noBuildTasksLastUpdate){
-                        
-                        // advance build height
-                        global.currentBuildHeight++
-                        if( global.currentBuildHeight > 1000 ){
-                            global.currentBuildHeight = 1000
+                        if( verifyLevelComplete() ){
+                            // advance build height
+                            global.currentBuildHeight++
+                            if( global.currentBuildHeight > 1000 ){
+                                global.currentBuildHeight = 1000
+                            }
                         }
                         global.noBuildTasksLastUpdate = false
+                        
                     } else {
                         
                         // maybe advance build height next update

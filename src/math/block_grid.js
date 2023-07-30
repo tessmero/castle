@@ -7,18 +7,22 @@
 class BlockGrid {
     
     constructor(){
-        var n = global.gridWidth * global.gridHeight; // x y
+        var n = global.gridWidth * global.gridHeight; 
         
-        this.blockedByConstruction = new Array(n).fill(false)
-        this.heights = new Array(n).fill(0) // z  
+        // tile properties
+        this.heights = new Array(n).fill(0) // precise z
+        this.blockedByConstruction = new Array(n).fill(false) 
+        this.underConstruction = new Array(n).fill(false) 
         
         // set ground height with perlin noise
         if( true ){
             var i = 0
             for( var x=0 ; x < global.gridWidth ; x++ ){
                 for( var y=0 ; y < global.gridHeight ; y++ ){
-                    this.heights[i] = .5+perlin.get(x/10,y/10)
-                    i++
+                    var h = .5+perlin.get(x/10,y/10)
+                    if( h > .9 ) h = .9
+                    if( h < .01 ) h = .01
+                    this.heights[i++] = h
                 }
             }
         }
@@ -195,25 +199,44 @@ class BlockGrid {
     draw(g){
         for( var x=global.gridWidth-1 ; x>=0 ; x-- ){
             for( var y=global.gridHeight-1 ; y>=0 ; y-- ){
-                var z = this.heights[this.getI(x,y)]
-                this.drawBlock(g,x,y,z)
+                var i = this.getI(x,y)
+                var z = this.heights[i]
+                var c = this.underConstruction[i]
+                this.drawBlock(g,x,y,z,(!c) && (z!=Math.floor(z)))
+                if( c ){
+                    var d = global.blockUnits.z.mul(Math.floor(z)-z)
+                    this.drawBlock(g,x,y,z,false,d,true)
+                }
             }
         }
-        
-        //draw spawn
-        
     }
     
-    drawBlock(g,x,y,z){
+    // used in draw() above
+    drawBlock(g,x,y,z,isDirt,depth=null,underConstruction=false){
+        if( depth == null ){
+            depth = this.sideFaceEdge
+        }
+        
         var a = this.get2DCoords(x,y,z)
         var b = a.add(global.blockUnits.x)
         var c = b.add(global.blockUnits.y)
         var d = a.add(global.blockUnits.y)
         
+        // dirt
         var topColor = '#7ec850'
         var leftColor = '#9b7653'
         var rightColor = '#9b7653'
-        if( z%1==0 ){
+        
+        if( underConstruction ){
+            
+            // block under construction
+            topColor = '#AAA'
+            leftColor = '#666'
+            rightColor = '#888'
+            
+        } else if( !isDirt ){
+            
+            // built block
             topColor = '#DDD'
             leftColor = '#AAA'
             rightColor = '#CCC'
@@ -225,10 +248,10 @@ class BlockGrid {
         this.drawQuad(g,a,b,c,d,topColor,edgeColor)
         
         // draw visible left face of block
-        this.drawQuad(g,a,d,d.add(this.sideFaceEdge),a.add(this.sideFaceEdge),leftColor,edgeColor)
+        this.drawQuad(g,a,d,d.add(depth),a.add(depth),leftColor,edgeColor)
         
         // draw visible right face of block
-        this.drawQuad(g,a,b,b.add(this.sideFaceEdge),a.add(this.sideFaceEdge),rightColor,edgeColor)
+        this.drawQuad(g,a,b,b.add(depth),a.add(depth),rightColor,edgeColor)
         
         if( global.debugBlockCoords ){
             g.fillStyle = 'black'
@@ -248,23 +271,12 @@ class BlockGrid {
     
     drawQuad(g,a,b,c,d,fillStyle,strokeStyle=null){
         g.fillStyle = fillStyle
-        this.quadPath(g,a,b,c,d)
-        g.fill()
-        
-        if( strokeStyle != null ){
-            g.strokeStyle = strokeStyle
-            g.lineWidth = .001
-            this.quadPath(g,a,b,c,d)
-            g.stroke()
-        }
-    }
-    
-    quadPath(g,a,b,c,d){
         g.beginPath()
         g.moveTo( a.x, a.y )
         g.lineTo( b.x, b.y )
         g.lineTo( c.x, c.y )
         g.lineTo( d.x, d.y )
         g.lineTo( a.x, a.y )
+        g.fill()
     }
 }

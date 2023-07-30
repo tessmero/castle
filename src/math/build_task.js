@@ -7,21 +7,36 @@ class BuildTask{
     constructor(x,y,path){
         this.x = x
         this.y = y
+        this.i = global.grid.getI(x,y)
         this.path = path
         this.deliveryTimeOffset = this.path.duration/2
         this.workerOffsets = [] // position of workers on path
         this.orCount = 0 // number of workers in first half of path
         this.workerDeployCountDown = this.randCountdown()
         this.remainingDeliveries = global.deliveriesPerBlock
+        this.firstDelivery = true
     }
     
     // called in update() when a worker arrives at the block
     madeDelivery(){
+        
+        // flatten terrain
+        if( this.firstDelivery ){
+            global.grid.heights[this.i] = Math.floor(global.grid.heights[this.i])
+            this.firstDelivery = false
+        }
+        
         this.remainingDeliveries--
         this.orCount--
         
+        // add visual indication of progress
+        global.grid.underConstruction[this.i] = true
+        global.grid.heights[this.i] += (.9/global.deliveriesPerBlock)
+        
+        
         // check if construction completed
         if( this.remainingDeliveries==0 ){
+            global.grid.underConstruction[this.i] = false
             global.grid.requestBlockPlacement(this.x,this.y)
         }
     }

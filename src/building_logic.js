@@ -15,10 +15,10 @@ function getNextBlockToBuild(){
             if( global.grid.blockedByConstruction[i] ){
                 continue
             }
-            var h = global.grid.heights[i]
+            var h = global.grid.getHeightForPathfinding(i)
             var pi = global.grid.pathIndices[i]
             var th = global.castle.getTargetHeight(x,y)
-            if( (Math.floor(h)==global.currentBuildHeight) && (pi > maxPi) && (h<th) ) {
+            if( (h==global.currentBuildHeight) && (pi > maxPi) && (h<th) ) {
                 bestX = x
                 bestY = y
                 maxPi = pi
@@ -29,4 +29,19 @@ function getNextBlockToBuild(){
         return null
     }
     return [bestX,bestY]
+}
+
+function verifyLevelComplete(){
+    
+    for( var x = 0 ; x < global.gridWidth ; x++ ){
+        for( var y = 0 ; y < global.gridHeight ; y++ ){
+            var i = global.grid.getI(x,y)
+            var h = global.grid.heights[i]
+            var th = global.castle.getTargetHeight(x,y)
+            if( (h<th) && (h<(global.currentBuildHeight+1)) ){
+                return false
+            }
+        }
+    }
+    return true
 }

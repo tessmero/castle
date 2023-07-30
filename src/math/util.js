@@ -10,16 +10,6 @@ function randRange(min,max){
     return min + rand()*(max-min)
 }
 
-
-// used in segment.js
-//
-// given two points, get slope and intercept
-function getMb(a,b){
-    var m = (b.y-a.y)/(b.x-a.x)
-    var b = a.y - m*a.x
-    return {m:m,b:b}
-}
-
 //non-negative mod
 function nnmod(a,b){
     var r = a%b

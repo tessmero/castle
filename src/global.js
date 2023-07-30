@@ -37,7 +37,7 @@ const global = {
     
     // active contruction projects
     allBuildTasks: [],
-    workerDeployDelay: [100,1000], //millisecs 
+    workerDeployDelay: [20,500], //millisecs 
     newTaskDelay: 200,
     newTaskCountdown: 700,
     taskCountLimit: 20,
